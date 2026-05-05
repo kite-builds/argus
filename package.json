@@ -1,0 +1,21 @@
+{
+  "name": "argus",
+  "version": "0.0.1",
+  "description": "Autonomous research agent that pays for the data it needs (x402 + USDC on Base).",
+  "type": "module",
+  "main": "dist/cli.js",
+  "bin": {
+    "argus": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "node --watch --experimental-strip-types src/cli.ts",
+    "test": "node --test --experimental-strip-types test/**/*.test.ts"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.5.0"
+  },
+  "license": "MIT"
+}
