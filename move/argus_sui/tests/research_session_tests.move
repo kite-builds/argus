@@ -524,3 +524,91 @@ fun hot_potato_begin_then_refund_no_payment() {
     ts::return_shared(session);
     ts::end(sc);
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// Property tests — invariants that must hold across any sequence of
+// pay_and_record calls. These are bounded-loop "for-all" tests, the
+// state of the art for Move (no QuickCheck analog exists).
+// ─────────────────────────────────────────────────────────────────────
+
+#[test]
+fun property_conservation_of_value() {
+    // Invariant: after any sequence of successful settlements,
+    //            total_paid + balance_value == budget_cap.
+    let mut sc = setup();
+    mint_with_budget(&mut sc, 10_000, 0);
+    sc.next_tx(ASKER);
+    let cfg = sc.take_shared<ArgusConfig>();
+    let mut session = sc.take_shared<ResearchSession<SUI>>();
+
+    let payees = vector[PAYEE_A, PAYEE_B, PAYEE_C];
+    let mut i: u64 = 0;
+    while (i < 16) {
+        let payee = *vector::borrow(&payees, i % 3);
+        let amount = (1 + (i * 7) % 100);
+        rs::pay_and_record<SUI>(&cfg, &mut session, amount, payee, HASH_A, 100 + i, sc.ctx());
+
+        // Check invariant after every step.
+        assert!(
+            rs::total_paid(&session) + rs::balance_value(&session) == rs::budget_cap(&session),
+            1000 + i,
+        );
+        i = i + 1;
+    };
+
+    ts::return_shared(cfg);
+    ts::return_shared(session);
+    ts::end(sc);
+}
+
+#[test]
+fun property_payees_and_hashes_parallel() {
+    // Invariant: payees.length == response_hashes.length always.
+    let mut sc = setup();
+    mint_with_budget(&mut sc, 10_000, 0);
+    sc.next_tx(ASKER);
+    let cfg = sc.take_shared<ArgusConfig>();
+    let mut session = sc.take_shared<ResearchSession<SUI>>();
+
+    let mut i: u64 = 0;
+    while (i < 12) {
+        rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_A, 200 + i, sc.ctx());
+        assert!(
+            vector::length(rs::payees(&session)) == vector::length(rs::response_hashes(&session)),
+            2000 + i,
+        );
+        i = i + 1;
+    };
+
+    ts::return_shared(cfg);
+    ts::return_shared(session);
+    ts::end(sc);
+}
+
+#[test]
+fun property_receipt_iff_used() {
+    // Invariant: receipt_exists(payee, nonce) is true iff (payee, nonce)
+    //            was used in pay_and_record. False for unused nonces.
+    let mut sc = setup();
+    mint_with_budget(&mut sc, 1000, 0);
+    sc.next_tx(ASKER);
+    let cfg = sc.take_shared<ArgusConfig>();
+    let mut session = sc.take_shared<ResearchSession<SUI>>();
+
+    rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_A, 1, sc.ctx());
+    rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_B, HASH_B, 1, sc.ctx());
+
+    // Used (payee, nonce) pairs:
+    assert!(rs::receipt_exists<SUI>(&session, PAYEE_A, 1), 0);
+    assert!(rs::receipt_exists<SUI>(&session, PAYEE_B, 1), 1);
+    // Unused nonce on used payee:
+    assert!(!rs::receipt_exists<SUI>(&session, PAYEE_A, 99), 2);
+    // Unused payee on used nonce:
+    assert!(!rs::receipt_exists<SUI>(&session, PAYEE_C, 1), 3);
+    // Cross: same payee, different nonce — independent.
+    assert!(!rs::receipt_exists<SUI>(&session, PAYEE_A, 2), 4);
+
+    ts::return_shared(cfg);
+    ts::return_shared(session);
+    ts::end(sc);
+}
