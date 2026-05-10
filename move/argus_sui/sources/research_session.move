@@ -321,6 +321,130 @@ public fun set_authorized_agent<T>(
 }
 
 // ─────────────────────────────────────────────────────────────────────
+// Hot-potato call lifecycle — type-system atomicity
+// ─────────────────────────────────────────────────────────────────────
+
+const EReceiptSessionMismatch: u64 = 16;
+
+/// Hot-potato witness for an in-flight paid research call.
+/// Has NO abilities — cannot be copied, dropped, stored, or transferred.
+/// The PTB that issues a `ResearchReceipt` MUST also call
+/// `settle_research_call` or `refund_research_call` against it within
+/// the same transaction — otherwise the PTB aborts at type-check time.
+/// This is what `pay_and_record` enforces only at runtime.
+public struct ResearchReceipt {
+    session_id: ID,
+    payee: address,
+    amount: u64,
+    nonce: u64,
+}
+
+/// Begin a research call. Splits the payment off the budget into the
+/// receipt's escrow (held inside the session under a dynamic field
+/// keyed by the receipt's nonce) and returns the hot-potato witness.
+/// Settle/refund must consume the witness in the same PTB.
+public fun begin_research_call<T>(
+    config: &ArgusConfig,
+    session: &mut ResearchSession<T>,
+    amount: u64,
+    payee: address,
+    nonce: u64,
+    ctx: &TxContext,
+): ResearchReceipt {
+    argus::assert_current_version(config);
+    assert!(!session.locked, EAlreadyLocked);
+    assert!(amount > 0, EZeroPayment);
+    assert!(payee != @0x0, EZeroPayee);
+    assert!(session.total_paid + amount <= session.budget_cap, EBudgetExceeded);
+    assert!(vector::length(&session.payees) < MAX_RECEIPTS, ETooManyReceipts);
+
+    if (option::is_some(&session.authorized_agent)) {
+        let allowed = *option::borrow(&session.authorized_agent);
+        assert!(ctx.sender() == allowed, ENotAuthorizedAgent);
+    };
+
+    let key = ReceiptKey<T> { payee, nonce };
+    assert!(!df::exists(&session.id, key), EReceiptAlreadyExists);
+
+    // Park the funds inside the session as a dynamic field on the
+    // receipt key. settle/refund will consume it.
+    let escrow = balance::split(&mut session.balance, amount);
+    df::add(&mut session.id, EscrowKey<T> { payee, nonce }, escrow);
+
+    ResearchReceipt {
+        session_id: object::id(session),
+        payee,
+        amount,
+        nonce,
+    }
+}
+
+/// Discharge a `ResearchReceipt` honestly: transfer the escrowed funds
+/// to the payee and record the response-blob hash.
+public fun settle_research_call<T>(
+    config: &ArgusConfig,
+    session: &mut ResearchSession<T>,
+    receipt: ResearchReceipt,
+    blob_hash: vector<u8>,
+    ctx: &mut TxContext,
+) {
+    argus::assert_current_version(config);
+    assert!(!session.locked, EAlreadyLocked);
+    assert!(object::id(session) == receipt.session_id, EReceiptSessionMismatch);
+    assert!(vector::length(&blob_hash) == BLOB_HASH_LEN, EHashWrongLength);
+    let ResearchReceipt { session_id: _, payee, amount, nonce } = receipt;
+
+    // Pull the escrow back out and pay the payee.
+    let escrow_bal: Balance<T> = df::remove(&mut session.id, EscrowKey<T> { payee, nonce });
+    let payment_coin = coin::from_balance(escrow_bal, ctx);
+    transfer::public_transfer(payment_coin, payee);
+
+    let sequence = vector::length(&session.payees);
+    let is_new_payee = !vector::contains(&session.payees, &payee);
+    session.total_paid = session.total_paid + amount;
+    vector::push_back(&mut session.payees, payee);
+    vector::push_back(&mut session.response_hashes, blob_hash);
+    if (is_new_payee) {
+        session.unique_payees = session.unique_payees + 1;
+    };
+
+    df::add(&mut session.id, ReceiptKey<T> { payee, nonce }, Receipt {
+        amount,
+        blob_hash,
+        sequence,
+    });
+
+    event::emit(ReceiptRecorded {
+        session_id: object::id(session),
+        payee,
+        amount,
+        blob_hash,
+        nonce,
+        sequence,
+        total_paid: session.total_paid,
+    });
+}
+
+/// Discharge a `ResearchReceipt` by refunding the escrow back to the
+/// session's budget pool. No payment to payee, no receipt registered.
+/// Used when the off-chain fetch fails after `begin_research_call` ran.
+public fun refund_research_call<T>(
+    session: &mut ResearchSession<T>,
+    receipt: ResearchReceipt,
+) {
+    let ResearchReceipt { session_id, payee, amount: _, nonce } = receipt;
+    assert!(object::id(session) == session_id, EReceiptSessionMismatch);
+    let escrow_bal: Balance<T> = df::remove(&mut session.id, EscrowKey<T> { payee, nonce });
+    balance::join(&mut session.balance, escrow_bal);
+}
+
+/// Dynamic-field key for hot-potato escrow balances.
+public struct EscrowKey<phantom T> has copy, drop, store {
+    payee: address,
+    nonce: u64,
+}
+
+// ─────────────────────────────────────────────────────────────────────
 // Lock — owner finalises the session
 // ─────────────────────────────────────────────────────────────────────
 

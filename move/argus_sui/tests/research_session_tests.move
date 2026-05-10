@@ -401,3 +401,126 @@ fun withdraw_before_lock_aborts() {
     ts::return_shared(session);
     ts::end(sc);
 }
+
+// ─────────────────────────────────────────────────────────────────────
+// S01 security: authorized_agent + duplicate-payee bypass
+// ─────────────────────────────────────────────────────────────────────
+
+fun mint_with_agent(sc: &mut Scenario, budget_units: u64, agent: address) {
+    let cfg = sc.take_shared<ArgusConfig>();
+    let budget = coin::mint_for_testing<SUI>(budget_units, sc.ctx());
+    rs::open_session<SUI>(
+        &cfg,
+        string::utf8(Q_BLOB),
+        budget,
+        0,
+        b"",
+        option::some(agent),
+        sc.ctx(),
+    );
+    ts::return_shared(cfg);
+}
+
+#[test, expected_failure(abort_code = rs::ENotAuthorizedAgent)]
+fun pay_unauthorized_agent_aborts() {
+    let mut sc = setup();
+    mint_with_agent(&mut sc, 1000, ASKER);
+    sc.next_tx(STRANGER);
+    let cfg = sc.take_shared<ArgusConfig>();
+    let mut session = sc.take_shared<ResearchSession<SUI>>();
+    rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_A, 1, sc.ctx());
+    ts::return_shared(cfg);
+    ts::return_shared(session);
+    ts::end(sc);
+}
+
+#[test]
+fun authorized_agent_settles() {
+    let mut sc = setup();
+    mint_with_agent(&mut sc, 1000, ASKER);
+    sc.next_tx(ASKER);
+    let cfg = sc.take_shared<ArgusConfig>();
+    let mut session = sc.take_shared<ResearchSession<SUI>>();
+    rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_A, 1, sc.ctx());
+    assert!(rs::total_paid(&session) == 50, 0);
+    ts::return_shared(cfg);
+    ts::return_shared(session);
+    ts::end(sc);
+}
+
+#[test, expected_failure(abort_code = rs::EMinSourcesNotMet)]
+fun lock_with_duplicate_payees_aborts_on_unique_count() {
+    // 3 payments to SAME payee, min_sources=3 → unique_payees=1 → abort.
+    let mut sc = setup();
+    mint_with_budget(&mut sc, 1000, 3);
+    sc.next_tx(ASKER);
+    let cfg = sc.take_shared<ArgusConfig>();
+    let mut session = sc.take_shared<ResearchSession<SUI>>();
+    rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_A, 1, sc.ctx());
+    rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_B, 2, sc.ctx());
+    rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_C, 3, sc.ctx());
+    rs::lock_session<SUI>(&cfg, &mut session, string::utf8(R_BLOB), sc.ctx());
+    ts::return_shared(cfg);
+    ts::return_shared(session);
+    ts::end(sc);
+}
+
+#[test, expected_failure(abort_code = rs::EZeroPayee)]
+fun pay_to_zero_payee_aborts() {
+    let mut sc = setup();
+    mint_with_budget(&mut sc, 100, 0);
+    sc.next_tx(ASKER);
+    let cfg = sc.take_shared<ArgusConfig>();
+    let mut session = sc.take_shared<ResearchSession<SUI>>();
+    rs::pay_and_record<SUI>(&cfg, &mut session, 50, @0x0, HASH_A, 1, sc.ctx());
+    ts::return_shared(cfg);
+    ts::return_shared(session);
+    ts::end(sc);
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Hot-potato lifecycle (HP-01)
+// ─────────────────────────────────────────────────────────────────────
+
+#[test]
+fun hot_potato_begin_then_settle_succeeds() {
+    let mut sc = setup();
+    mint_with_budget(&mut sc, 1000, 0);
+    sc.next_tx(ASKER);
+    let cfg = sc.take_shared<ArgusConfig>();
+    let mut session = sc.take_shared<ResearchSession<SUI>>();
+
+    let receipt = rs::begin_research_call<SUI>(
+        &cfg, &mut session, 100, PAYEE_A, 1, sc.ctx(),
+    );
+    rs::settle_research_call<SUI>(
+        &cfg, &mut session, receipt, HASH_A, sc.ctx(),
+    );
+    assert!(rs::total_paid(&session) == 100, 0);
+    assert!(rs::receipt_exists<SUI>(&session, PAYEE_A, 1), 1);
+
+    ts::return_shared(cfg);
+    ts::return_shared(session);
+    ts::end(sc);
+}
+
+#[test]
+fun hot_potato_begin_then_refund_no_payment() {
+    let mut sc = setup();
+    mint_with_budget(&mut sc, 1000, 0);
+    sc.next_tx(ASKER);
+    let cfg = sc.take_shared<ArgusConfig>();
+    let mut session = sc.take_shared<ResearchSession<SUI>>();
+
+    let receipt = rs::begin_research_call<SUI>(
+        &cfg, &mut session, 100, PAYEE_A, 1, sc.ctx(),
+    );
+    rs::refund_research_call<SUI>(&mut session, receipt);
+    assert!(rs::total_paid(&session) == 0, 0);
+    assert!(rs::balance_value(&session) == 1000, 1);
+    assert!(!rs::receipt_exists<SUI>(&session, PAYEE_A, 1), 2);
+
+    ts::return_shared(cfg);
+    ts::return_shared(session);
+    ts::end(sc);
+}
