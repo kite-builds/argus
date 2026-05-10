@@ -12,10 +12,13 @@
     "dev": "node --watch --experimental-strip-types src/cli.ts",
     "test": "node --test --experimental-strip-types test/**/*.test.ts"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@mysten/sui": "^1.45.2",
+    "@mysten/walrus": "^1.1.7"
+  },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.9.3"
   },
   "license": "MIT"
 }

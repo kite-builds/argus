@@ -1,0 +1,29 @@
+{
+  "network": "testnet",
+  "deployedAt": "2026-05-09T22:45:00Z",
+  "deployer": "0x4fb83fbf87b2f147fab7c66afc00aa64b13f4ad85204bdbfcabe0b8e374692e1",
+  "packageId": "0xca33144f3cac917b81d41d6720c942d51c0691a5dea8dbd5940d93ba8cc03c74",
+  "modules": ["argus", "research_session"],
+  "objects": {
+    "argusConfig": {
+      "id": "0x1c6fefe5fbcd5b973a38abdcc37d5e156d8a9dd78cfd26a17ed4ab91734a8c8e",
+      "type": "shared",
+      "fullType": "0xca33144f3cac917b81d41d6720c942d51c0691a5dea8dbd5940d93ba8cc03c74::argus::ArgusConfig"
+    },
+    "adminCap": {
+      "id": "0xd475230d54aa649ea4b05f63740c70de1641344b599d0708f5191ad7722ae2e1",
+      "type": "owned",
+      "owner": "0x4fb83fbf87b2f147fab7c66afc00aa64b13f4ad85204bdbfcabe0b8e374692e1",
+      "fullType": "0xca33144f3cac917b81d41d6720c942d51c0691a5dea8dbd5940d93ba8cc03c74::argus::AdminCap"
+    },
+    "upgradeCap": {
+      "id": "0x2e183697104fb75f21b9c2f528ee8cbf9291ea07118e7e1bb9c331970c8887ce",
+      "type": "owned",
+      "owner": "0x4fb83fbf87b2f147fab7c66afc00aa64b13f4ad85204bdbfcabe0b8e374692e1",
+      "fullType": "0x2::package::UpgradeCap"
+    }
+  },
+  "explorer": "https://suiscan.xyz/testnet/object/0xca33144f3cac917b81d41d6720c942d51c0691a5dea8dbd5940d93ba8cc03c74",
+  "deployCostSui": 0.03655508,
+  "version": 1
+}
