@@ -24,6 +24,7 @@ import { LocalWalrusTrace } from "../src/sui/walrus-trace.ts";
 
 const NETWORK = (process.env.ARGUS_DEMO_NETWORK ?? "testnet") as "testnet" | "mainnet";
 const QUESTION = process.env.ARGUS_DEMO_QUESTION ?? "What is BTC's 24h volume across DEXes?";
+const MALICIOUS = process.argv.includes("--malicious");
 
 const SOURCES = [
   {
@@ -80,7 +81,16 @@ async function main(): Promise<void> {
   console.log("ARGUS — multi-source research bundle on Sui");
   console.log(`network: ${NETWORK}`);
   console.log(`question: "${QUESTION}"`);
+  if (MALICIOUS) {
+    console.log("mode:    MALICIOUS — source 3 over-bills, expect atomic abort");
+  }
   console.log("");
+
+  // In malicious mode, source 3 bills 100x — pushing the bundle over budget.
+  // The PTB aborts on the third pay_and_record call; sources 1+2 also revert.
+  const sources = MALICIOUS
+    ? SOURCES.map((s, i) => i === 2 ? { ...s, priceMicroUsd: s.priceMicroUsd * 100n } : s)
+    : SOURCES;
 
   const deployment = loadDeployment();
   const signer = loadDeployerKey();
@@ -107,7 +117,7 @@ async function main(): Promise<void> {
   pause("step 1: off-chain — fetch + Walrus upload per source");
   const steps = [];
   let nonce = 1n;
-  for (const s of SOURCES) {
+  for (const s of sources) {
     const payload = new TextEncoder().encode(JSON.stringify(s.response));
     const trace = await walrus.upload(payload);
     // Convert micro-USD to MIST. For demo, treat $0.001 = 1 MIST.
@@ -126,9 +136,12 @@ async function main(): Promise<void> {
   pause("step 2: on-chain — mint ResearchSession (one PTB)");
   const questionTrace = await walrus.upload(new TextEncoder().encode(QUESTION));
   const totalAmount = steps.reduce((acc, s) => acc + s.amount, 0n);
+  // Honest budget: covers honest prices with 2x headroom. Malicious
+  // mode hits this cap because source 3 inflates 100x.
+  const honestTotal = SOURCES.reduce((acc, s) => acc + s.priceMicroUsd, 0n);
   const minted = await sui.mintSession({
     questionBlobId: questionTrace.blobId,
-    budget: { splitFromGas: totalAmount * 2n }, // 2x headroom
+    budget: { splitFromGas: honestTotal * 2n },
     minSources: SOURCES.length,
   });
   console.log(`  session: ${minted.sessionId}`);
@@ -137,16 +150,33 @@ async function main(): Promise<void> {
 
   // ─── On-chain step 2: bundle ───
   pause("step 3: on-chain — atomic multi-source bundle (ONE PTB)");
-  const bundle = await sui.buildBundle({
-    sessionId: minted.sessionId,
-    steps,
-  });
-  const receiptCount = (bundle.events as Array<{ type?: string }>).filter((e) =>
-    typeof e.type === "string" && e.type.endsWith("::ReceiptRecorded"),
-  ).length;
-  console.log(`  digest:  ${bundle.digest}`);
-  console.log(`  events:  ${receiptCount} ReceiptRecorded (one per source) from ONE tx`);
-  console.log(`  → ${explorer("tx", bundle.digest)}`);
+  let bundleDigest: string | null = null;
+  try {
+    const bundle = await sui.buildBundle({
+      sessionId: minted.sessionId,
+      steps,
+    });
+    const receiptCount = (bundle.events as Array<{ type?: string }>).filter((e) =>
+      typeof e.type === "string" && e.type.endsWith("::ReceiptRecorded"),
+    ).length;
+    console.log(`  digest:  ${bundle.digest}`);
+    console.log(`  events:  ${receiptCount} ReceiptRecorded (one per source) from ONE tx`);
+    console.log(`  → ${explorer("tx", bundle.digest)}`);
+    bundleDigest = bundle.digest;
+  } catch (err) {
+    if (!MALICIOUS) throw err;
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(`  ABORTED — PTB reverted atomically.`);
+    console.log(`  reason:  ${msg.split("\n")[0].slice(0, 240)}`);
+    console.log(``);
+    console.log(`  no payments settled. no blob hashes recorded.`);
+    console.log(`  the malicious source over-billed; sources 1+2 also reverted.`);
+    console.log(`  this is the property s402/a402/Beep don't ship: bundle-level`);
+    console.log(`  atomicity. partial-fill is impossible by construction.`);
+    pause("done (malicious mode)");
+    console.log(`session object: ${explorer("object", minted.sessionId)} (still empty — locked-out)`);
+    return;
+  }
 
   // ─── On-chain step 3: lock ───
   pause("step 4: on-chain — lock session (owner finalisation)");
@@ -164,6 +194,9 @@ async function main(): Promise<void> {
   console.log(`session object: ${explorer("object", minted.sessionId)}`);
   console.log(`anyone can verify: ${SOURCES.length} payments + ${SOURCES.length} blob hashes,`);
   console.log(`bound atomically in one Sui PTB — no partial-fill possible.`);
+  if (bundleDigest) {
+    console.log(`bundle tx:      ${explorer("tx", bundleDigest)}`);
+  }
 }
 
 main().catch((e) => {
