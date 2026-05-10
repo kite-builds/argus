@@ -41,10 +41,10 @@ function loadDeployerKey(): Ed25519Keypair {
 
 const DEPLOYMENT = JSON.parse(
   readFileSync(
-    "move/argus_sui/deployments/testnet.json",
+    "move/quikt_sui/deployments/testnet.json",
     "utf8",
   ),
-) as { packageId: string; objects: { argusConfig: { id: string } } };
+) as { packageId: string; objects: { quiktConfig: { id: string } } };
 
 test(
   "sui-e2e: mint → multi-source bundle (3 sources, 1 PTB) → lock — all atomic",
@@ -59,7 +59,7 @@ test(
       signer,
       deployment: {
         packageId: DEPLOYMENT.packageId,
-        argusConfigId: DEPLOYMENT.objects.argusConfig.id,
+        argusConfigId: DEPLOYMENT.objects.quiktConfig.id,
         network: "testnet",
       },
       coinType: "0x2::sui::SUI",

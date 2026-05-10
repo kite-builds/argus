@@ -27,20 +27,14 @@
 ///   agent SDK chaining N `pay_and_record` calls into one PTB; if any
 ///   of them aborts (budget exceeded, replayed nonce, version
 ///   mismatch), the whole bundle reverts.
-module argus_sui::research_session;
+module quikt_sui::research_session;
 
 use std::string::String;
 use sui::balance::{Self, Balance};
-use sui::clock::Clock;
 use sui::coin::{Self, Coin};
 use sui::dynamic_field as df;
 use sui::event;
-use pyth::i64;
-use pyth::price;
-use pyth::price_identifier;
-use pyth::price_info::{Self, PriceInfoObject};
-use pyth::pyth;
-use argus_sui::argus::{Self, ArgusConfig};
+use quikt_sui::quikt::{Self, QuiktConfig};
 
 // Note: Move 2024 auto-generates `session.fn_name()` receiver syntax for
 // every public function whose first parameter is `&ResearchSession<T>` or
@@ -197,7 +191,7 @@ public struct AllowlistGranted has copy, drop {
 /// Session is shared so PTBs from the agent SDK can refer to it
 ///      by id. `min_sources = 0` disables the multi-source floor.
 public fun open_session<T>(
-    config: &ArgusConfig,
+    config: &QuiktConfig,
     question_blob_id: String,
     budget: Coin<T>,
     min_sources: u64,
@@ -205,7 +199,7 @@ public fun open_session<T>(
     authorized_agent: Option<address>,
     ctx: &mut TxContext,
 ) {
-    argus::assert_current_version(config);
+    quikt::assert_current_version(config);
     let budget_cap = coin::value(&budget);
     assert!(budget_cap > 0, EZeroBudget);
     assert!(question_blob_id.length() <= MAX_BLOB_ID_LEN, EBlobIdTooLong);
@@ -259,7 +253,7 @@ public fun open_session<T>(
 ///      budget pool is the gate, not the sender. Owner-only operations
 ///      are `lock_session`, `add_to_allowlist`, `withdraw_balance`.
 public fun pay_and_record<T>(
-    config: &ArgusConfig,
+    config: &QuiktConfig,
     session: &mut ResearchSession<T>,
     amount: u64,
     payee: address,
@@ -267,7 +261,7 @@ public fun pay_and_record<T>(
     nonce: u64,
     ctx: &mut TxContext,
 ) {
-    argus::assert_current_version(config);
+    quikt::assert_current_version(config);
     assert!(!session.locked, EAlreadyLocked);
     assert!(amount > 0, EZeroPayment);
     assert!(payee != @0x0, EZeroPayee);
@@ -331,9 +325,6 @@ public fun set_authorized_agent<T>(
 // ─────────────────────────────────────────────────────────────────────
 
 const EReceiptSessionMismatch: u64 = 16;
-const EUsdCapExceeded: u64 = 17;
-const EWrongPriceFeed: u64 = 18;
-const ENegativePrice: u64 = 19;
 
 /// Hot-potato witness for an in-flight paid research call.
 /// Has NO abilities — cannot be copied, dropped, stored, or transferred.
@@ -353,14 +344,14 @@ public struct ResearchReceipt {
 /// keyed by the receipt's nonce) and returns the hot-potato witness.
 /// Settle/refund must consume the witness in the same PTB.
 public fun begin_research_call<T>(
-    config: &ArgusConfig,
+    config: &QuiktConfig,
     session: &mut ResearchSession<T>,
     amount: u64,
     payee: address,
     nonce: u64,
     ctx: &TxContext,
 ): ResearchReceipt {
-    argus::assert_current_version(config);
+    quikt::assert_current_version(config);
     assert!(!session.locked, EAlreadyLocked);
     assert!(amount > 0, EZeroPayment);
     assert!(payee != @0x0, EZeroPayee);
@@ -391,13 +382,13 @@ public fun begin_research_call<T>(
 /// Discharge a `ResearchReceipt` honestly: transfer the escrowed funds
 /// to the payee and record the response-blob hash.
 public fun settle_research_call<T>(
-    config: &ArgusConfig,
+    config: &QuiktConfig,
     session: &mut ResearchSession<T>,
     receipt: ResearchReceipt,
     blob_hash: vector<u8>,
     ctx: &mut TxContext,
 ) {
-    argus::assert_current_version(config);
+    quikt::assert_current_version(config);
     assert!(!session.locked, EAlreadyLocked);
     assert!(object::id(session) == receipt.session_id, EReceiptSessionMismatch);
     assert!(vector::length(&blob_hash) == BLOB_HASH_LEN, EHashWrongLength);
@@ -453,70 +444,10 @@ public struct EscrowKey<phantom T> has copy, drop, store {
     nonce: u64,
 }
 
-// ─────────────────────────────────────────────────────────────────────
-// Pyth-priced USD cap variant
-//
-// `pay_and_record_with_usd_cap` is the price-aware version of
-// `pay_and_record`. The agent passes `max_pay_usd_micros` (USD * 1e6);
-// the function reads a fresh Pyth price feed for `T` and aborts if the
-// settlement amount-times-price exceeds the cap. This is the
-// race-condition-free defence against a compromised endpoint that
-// raises its quoted price between the agent's off-chain decision and
-// the on-chain settlement.
-//
-// The caller MUST update the Pyth feed in the same PTB before this
-// call (Pyth on Sui is pull-based) — see `@pythnetwork/pyth-sui-js`
-// `client.updatePriceFeeds(tx, ...)`.
-// ─────────────────────────────────────────────────────────────────────
-
-const PYTH_MAX_AGE_SEC: u64 = 60;
-
-public fun pay_and_record_with_usd_cap<T>(
-    config: &ArgusConfig,
-    session: &mut ResearchSession<T>,
-    amount: u64,
-    payee: address,
-    blob_hash: vector<u8>,
-    nonce: u64,
-    max_pay_usd_micros: u64,
-    expected_feed_id: vector<u8>,
-    coin_decimals: u8,
-    clock: &Clock,
-    price_info: &PriceInfoObject,
-    ctx: &mut TxContext,
-) {
-    // Pin feed: refuse if the caller passed a different price object
-    // (e.g. attacker swapping a meme-coin feed that quotes 1000x).
-    let info = price_info::get_price_info_from_price_info_object(price_info);
-    let id = price_identifier::get_bytes(&price_info::get_price_identifier(&info));
-    assert!(id == expected_feed_id, EWrongPriceFeed);
-
-    // Fetch fresh price (aborts if older than PYTH_MAX_AGE_SEC).
-    let p = pyth::get_price_no_older_than(price_info, clock, PYTH_MAX_AGE_SEC);
-    let raw = price::get_price(&p);
-    assert!(!i64::get_is_negative(&raw), ENegativePrice);
-    let px_mag = i64::get_magnitude_if_positive(&raw);
-    let exp_neg = i64::get_magnitude_if_negative(&price::get_expo(&p));
-
-    // usd_micros = amount * px / 10^(coin_decimals + |expo|) * 1e6
-    let num: u128 = (amount as u128) * (px_mag as u128) * 1_000_000u128;
-    let den: u128 = pow10((coin_decimals as u64) + exp_neg);
-    let usd_micros = ((num / den) as u64);
-    assert!(usd_micros <= max_pay_usd_micros, EUsdCapExceeded);
-
-    // Delegate the actual settlement to the standard path.
-    pay_and_record(config, session, amount, payee, blob_hash, nonce, ctx);
-}
-
-fun pow10(e: u64): u128 {
-    let mut i: u64 = 0;
-    let mut r: u128 = 1;
-    while (i < e) {
-        r = r * 10u128;
-        i = i + 1;
-    };
-    r
-}
+// Pyth-priced USD-cap variant deferred to v1.1 (kept Move.toml clean
+// for hackathon timeline; re-add Pyth + Wormhole deps + the
+// `pay_and_record_with_usd_cap` entry once the Pyth dependency
+// resolution is debugged on testnet).
 
 // ─────────────────────────────────────────────────────────────────────
 // Lock — owner finalises the session
@@ -528,12 +459,12 @@ fun pow10(e: u64): u128 {
 /// Enforces `min_sources` so a thin single-source answer can be
 ///      rejected by the asker's policy.
 public fun lock_session<T>(
-    config: &ArgusConfig,
+    config: &QuiktConfig,
     session: &mut ResearchSession<T>,
     response_blob_id: String,
     ctx: &TxContext,
 ) {
-    argus::assert_current_version(config);
+    quikt::assert_current_version(config);
     assert!(ctx.sender() == session.owner, ENotOwner);
     assert!(!session.locked, EAlreadyLocked);
     assert!(response_blob_id.length() <= MAX_BLOB_ID_LEN, EBlobIdTooLong);

@@ -1,0 +1,34 @@
+{
+  "network": "testnet",
+  "deployedAt": "2026-05-10T12:05:00Z",
+  "name": "quikt_sui v1.0.0",
+  "deployer": "0x4fb83fbf87b2f147fab7c66afc00aa64b13f4ad85204bdbfcabe0b8e374692e1",
+  "packageId": "0x8bfa4c14b1fd4427c0ed6c27c3fba4cb8727c02010103bda32eb48568b7edb24",
+  "modules": ["quikt", "research_session"],
+  "objects": {
+    "quiktConfig": {
+      "id": "0xf011aec40f8992c7ed917504eb8c9f2922f6b28597ccd30ef0165b417c838f6b",
+      "type": "shared",
+      "fullType": "0x8bfa4c14b1fd4427c0ed6c27c3fba4cb8727c02010103bda32eb48568b7edb24::quikt::QuiktConfig"
+    },
+    "adminCap": {
+      "id": "0x21a342a7208cce06bdcfabffd1f85e94de1a03268cf2cab23286ac6932cfde15",
+      "type": "owned",
+      "owner": "0x4fb83fbf87b2f147fab7c66afc00aa64b13f4ad85204bdbfcabe0b8e374692e1",
+      "fullType": "0x8bfa4c14b1fd4427c0ed6c27c3fba4cb8727c02010103bda32eb48568b7edb24::quikt::AdminCap"
+    },
+    "upgradeCap": {
+      "id": "0x5e2b58c3be4e10499f81d4d22733ecf9c136ab8639849e00cd06c7709007e259",
+      "type": "owned",
+      "owner": "0x4fb83fbf87b2f147fab7c66afc00aa64b13f4ad85204bdbfcabe0b8e374692e1",
+      "fullType": "0x2::package::UpgradeCap"
+    }
+  },
+  "publishDigest": "5MizpNrMVuh1zzX6Ad6HuWXh3jB8k5yCPC9ng9poqkX3",
+  "explorer": "https://suiscan.xyz/testnet/object/0x8bfa4c14b1fd4427c0ed6c27c3fba4cb8727c02010103bda32eb48568b7edb24",
+  "version": 1,
+  "previousDeployments": [
+    {"namespace": "argus_sui", "packageId": "0xca33144f3cac917b81d41d6720c942d51c0691a5dea8dbd5940d93ba8cc03c74", "note": "Original v1.0 (May 9)"},
+    {"namespace": "argus_sui", "packageId": "0x3bc7e7c8ba77eac05db50057c7a09b33a498263e106280a450adae193fee0450", "note": "v1.1 (May 10 — S01 + hot-potato + BLAKE2b). Replaced with quikt namespace."}
+  ]
+}

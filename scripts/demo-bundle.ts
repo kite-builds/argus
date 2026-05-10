@@ -58,10 +58,10 @@ function loadDeployerKey(): Ed25519Keypair {
 }
 
 function loadDeployment() {
-  const path = `move/argus_sui/deployments/${NETWORK}.json`;
+  const path = `move/quikt_sui/deployments/${NETWORK}.json`;
   return JSON.parse(readFileSync(path, "utf8")) as {
     packageId: string;
-    objects: { argusConfig: { id: string } };
+    objects: { quiktConfig: { id: string } };
   };
 }
 
@@ -97,7 +97,7 @@ async function main(): Promise<void> {
   const sender = signer.toSuiAddress();
   console.log(`signer:   ${sender}`);
   console.log(`package:  ${deployment.packageId}`);
-  console.log(`config:   ${deployment.objects.argusConfig.id}`);
+  console.log(`config:   ${deployment.objects.quiktConfig.id}`);
 
   const client = new SuiClient({ url: getFullnodeUrl(NETWORK) });
   const sui = new SuiPaymentClient({
@@ -105,7 +105,7 @@ async function main(): Promise<void> {
     signer,
     deployment: {
       packageId: deployment.packageId,
-      argusConfigId: deployment.objects.argusConfig.id,
+      argusConfigId: deployment.objects.quiktConfig.id,
       network: NETWORK,
     },
     coinType: "0x2::sui::SUI",

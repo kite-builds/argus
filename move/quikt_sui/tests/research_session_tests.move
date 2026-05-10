@@ -2,14 +2,14 @@
 /// + the multi-source PTB-atomicity story that is the project's core
 /// claim.
 #[test_only]
-module argus_sui::research_session_tests;
+module quikt_sui::research_session_tests;
 
 use std::string;
 use sui::coin::{Self, Coin};
 use sui::sui::SUI;
 use sui::test_scenario::{Self as ts, Scenario};
-use argus_sui::argus::{Self, ArgusConfig};
-use argus_sui::research_session::{Self as rs, ResearchSession};
+use quikt_sui::quikt::{Self, QuiktConfig};
+use quikt_sui::research_session::{Self as rs, ResearchSession};
 
 const ASKER: address = @0xA11CE;
 const PAYEE_A: address = @0xBEEFA;
@@ -30,13 +30,13 @@ const R_BLOB: vector<u8> = b"r-blob-id";
 
 fun setup(): Scenario {
     let mut sc = ts::begin(ASKER);
-    argus::init_for_testing(sc.ctx());
+    quikt::init_for_testing(sc.ctx());
     sc.next_tx(ASKER);
     sc
 }
 
 fun mint_with_budget(sc: &mut Scenario, budget_units: u64, min_sources: u64) {
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let budget = coin::mint_for_testing<SUI>(budget_units, sc.ctx());
     rs::open_session<SUI>(
         &cfg,
@@ -88,7 +88,7 @@ fun pay_and_record_single_settles_atomically() {
     mint_with_budget(&mut sc, 1000, 0);
     sc.next_tx(ASKER);
 
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
     rs::pay_and_record<SUI>(
         &cfg,
@@ -128,7 +128,7 @@ fun pay_and_record_three_sources_in_one_tx_all_settle() {
     mint_with_budget(&mut sc, 1000, 3);
     sc.next_tx(ASKER);
 
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
 
     rs::pay_and_record<SUI>(&cfg, &mut session, 100, PAYEE_A, HASH_A, 1, sc.ctx());
@@ -156,7 +156,7 @@ fun pay_and_record_over_budget_aborts() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 100, 0);
     sc.next_tx(ASKER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
     rs::pay_and_record<SUI>(&cfg, &mut session, 200, PAYEE_A, HASH_A, 1, sc.ctx());
     ts::return_shared(cfg);
@@ -169,7 +169,7 @@ fun pay_and_record_zero_amount_aborts() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 100, 0);
     sc.next_tx(ASKER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
     rs::pay_and_record<SUI>(&cfg, &mut session, 0, PAYEE_A, HASH_A, 1, sc.ctx());
     ts::return_shared(cfg);
@@ -182,7 +182,7 @@ fun pay_and_record_wrong_hash_length_aborts() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 100, 0);
     sc.next_tx(ASKER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
     rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, b"too-short", 1, sc.ctx());
     ts::return_shared(cfg);
@@ -195,7 +195,7 @@ fun pay_and_record_replay_nonce_aborts() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 1000, 0);
     sc.next_tx(ASKER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
     rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_A, 1, sc.ctx());
     rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_B, 1, sc.ctx());
@@ -209,7 +209,7 @@ fun pay_and_record_same_payee_different_nonce_settles_twice() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 1000, 0);
     sc.next_tx(ASKER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
     rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_A, 1, sc.ctx());
     rs::pay_and_record<SUI>(&cfg, &mut session, 75, PAYEE_A, HASH_B, 2, sc.ctx());
@@ -229,7 +229,7 @@ fun lock_session_owner_locks_after_min_sources_met() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 1000, 2);
     sc.next_tx(ASKER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
     rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_A, 1, sc.ctx());
     rs::pay_and_record<SUI>(&cfg, &mut session, 75, PAYEE_B, HASH_B, 2, sc.ctx());
@@ -246,7 +246,7 @@ fun lock_session_below_min_sources_aborts() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 1000, 3);
     sc.next_tx(ASKER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
     rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_A, 1, sc.ctx());
     rs::lock_session<SUI>(&cfg, &mut session, string::utf8(R_BLOB), sc.ctx());
@@ -260,7 +260,7 @@ fun lock_session_non_owner_aborts() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 1000, 0);
     sc.next_tx(STRANGER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
     rs::lock_session<SUI>(&cfg, &mut session, string::utf8(R_BLOB), sc.ctx());
     ts::return_shared(cfg);
@@ -273,7 +273,7 @@ fun pay_after_lock_aborts() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 1000, 0);
     sc.next_tx(ASKER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
     rs::lock_session<SUI>(&cfg, &mut session, string::utf8(R_BLOB), sc.ctx());
     rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_A, 1, sc.ctx());
@@ -377,7 +377,7 @@ fun withdraw_balance_after_lock() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 1000, 0);
     sc.next_tx(ASKER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
     rs::pay_and_record<SUI>(&cfg, &mut session, 100, PAYEE_A, HASH_A, 1, sc.ctx());
     rs::lock_session<SUI>(&cfg, &mut session, string::utf8(R_BLOB), sc.ctx());
@@ -407,7 +407,7 @@ fun withdraw_before_lock_aborts() {
 // ─────────────────────────────────────────────────────────────────────
 
 fun mint_with_agent(sc: &mut Scenario, budget_units: u64, agent: address) {
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let budget = coin::mint_for_testing<SUI>(budget_units, sc.ctx());
     rs::open_session<SUI>(
         &cfg,
@@ -426,7 +426,7 @@ fun pay_unauthorized_agent_aborts() {
     let mut sc = setup();
     mint_with_agent(&mut sc, 1000, ASKER);
     sc.next_tx(STRANGER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
     rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_A, 1, sc.ctx());
     ts::return_shared(cfg);
@@ -439,7 +439,7 @@ fun authorized_agent_settles() {
     let mut sc = setup();
     mint_with_agent(&mut sc, 1000, ASKER);
     sc.next_tx(ASKER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
     rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_A, 1, sc.ctx());
     assert!(rs::total_paid(&session) == 50, 0);
@@ -454,7 +454,7 @@ fun lock_with_duplicate_payees_aborts_on_unique_count() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 1000, 3);
     sc.next_tx(ASKER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
     rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_A, 1, sc.ctx());
     rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_B, 2, sc.ctx());
@@ -470,7 +470,7 @@ fun pay_to_zero_payee_aborts() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 100, 0);
     sc.next_tx(ASKER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
     rs::pay_and_record<SUI>(&cfg, &mut session, 50, @0x0, HASH_A, 1, sc.ctx());
     ts::return_shared(cfg);
@@ -487,7 +487,7 @@ fun hot_potato_begin_then_settle_succeeds() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 1000, 0);
     sc.next_tx(ASKER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
 
     let receipt = rs::begin_research_call<SUI>(
@@ -509,7 +509,7 @@ fun hot_potato_begin_then_refund_no_payment() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 1000, 0);
     sc.next_tx(ASKER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
 
     let receipt = rs::begin_research_call<SUI>(
@@ -538,7 +538,7 @@ fun property_conservation_of_value() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 10_000, 0);
     sc.next_tx(ASKER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
 
     let payees = vector[PAYEE_A, PAYEE_B, PAYEE_C];
@@ -567,7 +567,7 @@ fun property_payees_and_hashes_parallel() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 10_000, 0);
     sc.next_tx(ASKER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
 
     let mut i: u64 = 0;
@@ -592,7 +592,7 @@ fun property_receipt_iff_used() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 1000, 0);
     sc.next_tx(ASKER);
-    let cfg = sc.take_shared<ArgusConfig>();
+    let cfg = sc.take_shared<QuiktConfig>();
     let mut session = sc.take_shared<ResearchSession<SUI>>();
 
     rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_A, 1, sc.ctx());

@@ -2,9 +2,9 @@
  * onchain.ts — typed wrappers around the argus_sui Move package.
  *
  * One method per public Move entry point:
- *   • `mintSession`  → argus_sui::research_session::mint_session
- *   • `payAndRecord` → argus_sui::research_session::pay_and_record
- *   • `lockSession`  → argus_sui::research_session::lock_session
+ *   • `mintSession`  → quikt_sui::research_session::mint_session
+ *   • `payAndRecord` → quikt_sui::research_session::pay_and_record
+ *   • `lockSession`  → quikt_sui::research_session::lock_session
  *
  * The interesting one is `buildBundlePtb`: it composes N pay_and_record
  * calls into a single Programmable Transaction Block so the multi-source
