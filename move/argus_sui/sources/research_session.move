@@ -31,9 +31,15 @@ module argus_sui::research_session;
 
 use std::string::String;
 use sui::balance::{Self, Balance};
+use sui::clock::Clock;
 use sui::coin::{Self, Coin};
 use sui::dynamic_field as df;
 use sui::event;
+use pyth::i64;
+use pyth::price;
+use pyth::price_identifier;
+use pyth::price_info::{Self, PriceInfoObject};
+use pyth::pyth;
 use argus_sui::argus::{Self, ArgusConfig};
 
 // Note: Move 2024 auto-generates `session.fn_name()` receiver syntax for
@@ -325,6 +331,9 @@ public fun set_authorized_agent<T>(
 // ─────────────────────────────────────────────────────────────────────
 
 const EReceiptSessionMismatch: u64 = 16;
+const EUsdCapExceeded: u64 = 17;
+const EWrongPriceFeed: u64 = 18;
+const ENegativePrice: u64 = 19;
 
 /// Hot-potato witness for an in-flight paid research call.
 /// Has NO abilities — cannot be copied, dropped, stored, or transferred.
@@ -442,6 +451,71 @@ public fun refund_research_call<T>(
 public struct EscrowKey<phantom T> has copy, drop, store {
     payee: address,
     nonce: u64,
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// Pyth-priced USD cap variant
+//
+// `pay_and_record_with_usd_cap` is the price-aware version of
+// `pay_and_record`. The agent passes `max_pay_usd_micros` (USD * 1e6);
+// the function reads a fresh Pyth price feed for `T` and aborts if the
+// settlement amount-times-price exceeds the cap. This is the
+// race-condition-free defence against a compromised endpoint that
+// raises its quoted price between the agent's off-chain decision and
+// the on-chain settlement.
+//
+// The caller MUST update the Pyth feed in the same PTB before this
+// call (Pyth on Sui is pull-based) — see `@pythnetwork/pyth-sui-js`
+// `client.updatePriceFeeds(tx, ...)`.
+// ─────────────────────────────────────────────────────────────────────
+
+const PYTH_MAX_AGE_SEC: u64 = 60;
+
+public fun pay_and_record_with_usd_cap<T>(
+    config: &ArgusConfig,
+    session: &mut ResearchSession<T>,
+    amount: u64,
+    payee: address,
+    blob_hash: vector<u8>,
+    nonce: u64,
+    max_pay_usd_micros: u64,
+    expected_feed_id: vector<u8>,
+    coin_decimals: u8,
+    clock: &Clock,
+    price_info: &PriceInfoObject,
+    ctx: &mut TxContext,
+) {
+    // Pin feed: refuse if the caller passed a different price object
+    // (e.g. attacker swapping a meme-coin feed that quotes 1000x).
+    let info = price_info::get_price_info_from_price_info_object(price_info);
+    let id = price_identifier::get_bytes(&price_info::get_price_identifier(&info));
+    assert!(id == expected_feed_id, EWrongPriceFeed);
+
+    // Fetch fresh price (aborts if older than PYTH_MAX_AGE_SEC).
+    let p = pyth::get_price_no_older_than(price_info, clock, PYTH_MAX_AGE_SEC);
+    let raw = price::get_price(&p);
+    assert!(!i64::get_is_negative(&raw), ENegativePrice);
+    let px_mag = i64::get_magnitude_if_positive(&raw);
+    let exp_neg = i64::get_magnitude_if_negative(&price::get_expo(&p));
+
+    // usd_micros = amount * px / 10^(coin_decimals + |expo|) * 1e6
+    let num: u128 = (amount as u128) * (px_mag as u128) * 1_000_000u128;
+    let den: u128 = pow10((coin_decimals as u64) + exp_neg);
+    let usd_micros = ((num / den) as u64);
+    assert!(usd_micros <= max_pay_usd_micros, EUsdCapExceeded);
+
+    // Delegate the actual settlement to the standard path.
+    pay_and_record(config, session, amount, payee, blob_hash, nonce, ctx);
+}
+
+fun pow10(e: u64): u128 {
+    let mut i: u64 = 0;
+    let mut r: u128 = 1;
+    while (i < e) {
+        r = r * 10u128;
+        i = i + 1;
+    };
+    r
 }
 
 // ─────────────────────────────────────────────────────────────────────
