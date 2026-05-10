@@ -26,6 +26,19 @@ const NETWORK = (process.env.ARGUS_DEMO_NETWORK ?? "testnet") as "testnet" | "ma
 const QUESTION = process.env.ARGUS_DEMO_QUESTION ?? "What is BTC's 24h volume across DEXes?";
 const MALICIOUS = process.argv.includes("--malicious");
 
+/**
+ * Coin type used for settlement.
+ *
+ * Mainnet defaults to Native USDC (Circle, MiCA-compliant, 6 decimals) —
+ * the standard agent-payment unit on Sui. Testnet defaults to SUI (free
+ * faucet) so iteration stays cheap. Override via QUIKT_COIN_TYPE.
+ */
+const COIN_TYPE_BY_NETWORK = {
+  testnet: "0x2::sui::SUI",
+  mainnet: "0xdba34672e30cb065b1f93e3ab55318768fd6fef66c15942c9f7cb846e2f900e7::usdc::USDC",
+};
+const COIN_TYPE = process.env.QUIKT_COIN_TYPE ?? COIN_TYPE_BY_NETWORK[NETWORK];
+
 const SOURCES = [
   {
     name: "bloomfilter.xyz",
@@ -78,8 +91,12 @@ function pause(label: string) {
 }
 
 async function main(): Promise<void> {
-  console.log("ARGUS — multi-source research bundle on Sui");
+  const coinSymbol = COIN_TYPE.endsWith("::usdc::USDC") ? "USDC" :
+                     COIN_TYPE.endsWith("::sui::SUI") ? "SUI" :
+                     COIN_TYPE.split("::").slice(-1)[0];
+  console.log("QUIKT — atomic agent receipts on Sui");
   console.log(`network: ${NETWORK}`);
+  console.log(`coin:    ${coinSymbol}`);
   console.log(`question: "${QUESTION}"`);
   if (MALICIOUS) {
     console.log("mode:    MALICIOUS — source 3 over-bills, expect atomic abort");
@@ -108,7 +125,7 @@ async function main(): Promise<void> {
       argusConfigId: deployment.objects.quiktConfig.id,
       network: NETWORK,
     },
-    coinType: "0x2::sui::SUI",
+    coinType: COIN_TYPE,
     networks: [`sui:${NETWORK}`],
   });
   const walrus = new LocalWalrusTrace();

@@ -28,6 +28,7 @@ import { LocalWalrusTrace } from "../src/sui/walrus-trace.ts";
 
 const SHOULD_RUN = process.env.ARGUS_E2E === "testnet";
 const TESTNET_RPC = "https://fullnode.testnet.sui.io:443";
+const COIN_TYPE = process.env.QUIKT_COIN_TYPE ?? "0x2::sui::SUI";
 
 function loadDeployerKey(): Ed25519Keypair {
   const path = `${homedir()}/.sui/sui_config/sui.keystore`;
@@ -62,7 +63,7 @@ test(
         argusConfigId: DEPLOYMENT.objects.quiktConfig.id,
         network: "testnet",
       },
-      coinType: "0x2::sui::SUI",
+      coinType: COIN_TYPE,
       networks: ["sui:testnet"],
     });
     const walrus = new LocalWalrusTrace();
