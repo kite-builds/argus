@@ -38,12 +38,13 @@ fun setup(): Scenario {
 fun mint_with_budget(sc: &mut Scenario, budget_units: u64, min_sources: u64) {
     let cfg = sc.take_shared<ArgusConfig>();
     let budget = coin::mint_for_testing<SUI>(budget_units, sc.ctx());
-    rs::mint_session<SUI>(
+    rs::open_session<SUI>(
         &cfg,
         string::utf8(Q_BLOB),
         budget,
         min_sources,
         b"",
+        option::none(),
         sc.ctx(),
     );
     ts::return_shared(cfg);
@@ -54,7 +55,7 @@ fun mint_with_budget(sc: &mut Scenario, budget_units: u64, min_sources: u64) {
 // ─────────────────────────────────────────────────────────────────────
 
 #[test]
-fun mint_session_happy() {
+fun open_session_happy() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 1000, 0);
     sc.next_tx(ASKER);
@@ -71,7 +72,7 @@ fun mint_session_happy() {
 }
 
 #[test, expected_failure(abort_code = rs::EZeroBudget)]
-fun mint_session_zero_budget_aborts() {
+fun open_session_zero_budget_aborts() {
     let mut sc = setup();
     mint_with_budget(&mut sc, 0, 0);
     ts::end(sc);
@@ -100,7 +101,7 @@ fun pay_and_record_single_settles_atomically() {
     );
     assert!(rs::total_paid(&session) == 100, 0);
     assert!(rs::balance_value(&session) == 900, 1);
-    assert!(*vector::borrow(rs::paid_to(&session), 0) == PAYEE_A, 2);
+    assert!(*vector::borrow(rs::payees(&session), 0) == PAYEE_A, 2);
     assert!(rs::receipt_exists<SUI>(&session, PAYEE_A, 1), 3);
 
     let (amount, blob_hash, sequence) = rs::receipt<SUI>(&session, PAYEE_A, 1);
@@ -136,8 +137,8 @@ fun pay_and_record_three_sources_in_one_tx_all_settle() {
 
     assert!(rs::total_paid(&session) == 350, 0);
     assert!(rs::balance_value(&session) == 650, 1);
-    assert!(vector::length(rs::paid_to(&session)) == 3, 2);
-    assert!(vector::length(rs::response_blob_hashes(&session)) == 3, 3);
+    assert!(vector::length(rs::payees(&session)) == 3, 2);
+    assert!(vector::length(rs::response_hashes(&session)) == 3, 3);
     let (_, h1, _) = rs::receipt<SUI>(&session, PAYEE_B, 2);
     assert!(h1 == HASH_B, 4);
 
@@ -213,7 +214,7 @@ fun pay_and_record_same_payee_different_nonce_settles_twice() {
     rs::pay_and_record<SUI>(&cfg, &mut session, 50, PAYEE_A, HASH_A, 1, sc.ctx());
     rs::pay_and_record<SUI>(&cfg, &mut session, 75, PAYEE_A, HASH_B, 2, sc.ctx());
     assert!(rs::total_paid(&session) == 125, 0);
-    assert!(vector::length(rs::paid_to(&session)) == 2, 1);
+    assert!(vector::length(rs::payees(&session)) == 2, 1);
     ts::return_shared(cfg);
     ts::return_shared(session);
     ts::end(sc);
