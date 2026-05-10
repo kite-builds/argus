@@ -72,7 +72,7 @@ test(
     const questionTrace = await walrus.upload(new TextEncoder().encode("test question"));
     const minted = await sui.mintSession({
       questionBlobId: questionTrace.blobId,
-      budget: { splitFromGas: 300_000_000n }, // 0.3 SUI
+      budget: { splitFromGas: 150_000_000n }, // 0.15 SUI
       minSources: 3,
     });
     assert.match(minted.sessionId, /^0x/);

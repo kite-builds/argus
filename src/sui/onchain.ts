@@ -62,6 +62,8 @@ export class ArgusOnchain {
     budget: { coinId: string } | { splitFromGas: bigint };
     minSources: number;
     memAccountId?: Uint8Array;
+    /** Optional address that's the only one allowed to call pay_and_record. */
+    authorizedAgent?: string | null;
   }): Transaction {
     const tx = new Transaction();
     let budgetArg;
@@ -71,8 +73,19 @@ export class ArgusOnchain {
       const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(args.budget.splitFromGas)]);
       budgetArg = coin;
     }
+    const agentArg =
+      args.authorizedAgent != null
+        ? tx.moveCall({
+            target: "0x1::option::some",
+            typeArguments: ["address"],
+            arguments: [tx.pure.address(args.authorizedAgent)],
+          })
+        : tx.moveCall({
+            target: "0x1::option::none",
+            typeArguments: ["address"],
+          });
     tx.moveCall({
-      target: `${this.deployment.packageId}::research_session::mint_session`,
+      target: `${this.deployment.packageId}::research_session::open_session`,
       typeArguments: [this.coinType],
       arguments: [
         tx.object(this.deployment.argusConfigId),
@@ -80,6 +93,7 @@ export class ArgusOnchain {
         budgetArg,
         tx.pure.u64(args.minSources),
         tx.pure.vector("u8", Array.from(args.memAccountId ?? new Uint8Array())),
+        agentArg,
       ],
     });
     return tx;

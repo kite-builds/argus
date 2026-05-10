@@ -1,29 +1,33 @@
 {
   "network": "testnet",
-  "deployedAt": "2026-05-09T22:45:00Z",
+  "deployedAt": "2026-05-10T11:30:00Z",
   "deployer": "0x4fb83fbf87b2f147fab7c66afc00aa64b13f4ad85204bdbfcabe0b8e374692e1",
-  "packageId": "0xca33144f3cac917b81d41d6720c942d51c0691a5dea8dbd5940d93ba8cc03c74",
+  "packageId": "0x3bc7e7c8ba77eac05db50057c7a09b33a498263e106280a450adae193fee0450",
   "modules": ["argus", "research_session"],
   "objects": {
     "argusConfig": {
-      "id": "0x1c6fefe5fbcd5b973a38abdcc37d5e156d8a9dd78cfd26a17ed4ab91734a8c8e",
+      "id": "0xbae085a2835ce93a32eff4aceb418325ce62af0dd9ad1a9154d388d0f169c588",
       "type": "shared",
-      "fullType": "0xca33144f3cac917b81d41d6720c942d51c0691a5dea8dbd5940d93ba8cc03c74::argus::ArgusConfig"
+      "fullType": "0x3bc7e7c8ba77eac05db50057c7a09b33a498263e106280a450adae193fee0450::argus::ArgusConfig"
     },
     "adminCap": {
-      "id": "0xd475230d54aa649ea4b05f63740c70de1641344b599d0708f5191ad7722ae2e1",
+      "id": "0x1095a28947aea0a19e687c3d0a385373203ab509a6cb21086e1a3b1da684780a",
       "type": "owned",
       "owner": "0x4fb83fbf87b2f147fab7c66afc00aa64b13f4ad85204bdbfcabe0b8e374692e1",
-      "fullType": "0xca33144f3cac917b81d41d6720c942d51c0691a5dea8dbd5940d93ba8cc03c74::argus::AdminCap"
+      "fullType": "0x3bc7e7c8ba77eac05db50057c7a09b33a498263e106280a450adae193fee0450::argus::AdminCap"
     },
     "upgradeCap": {
-      "id": "0x2e183697104fb75f21b9c2f528ee8cbf9291ea07118e7e1bb9c331970c8887ce",
+      "id": "0x6e9025abe458d7a958b9f8eb7d2335dd0a2510c0c67bee46999292ba767d50cf",
       "type": "owned",
       "owner": "0x4fb83fbf87b2f147fab7c66afc00aa64b13f4ad85204bdbfcabe0b8e374692e1",
       "fullType": "0x2::package::UpgradeCap"
     }
   },
-  "explorer": "https://suiscan.xyz/testnet/object/0xca33144f3cac917b81d41d6720c942d51c0691a5dea8dbd5940d93ba8cc03c74",
-  "deployCostSui": 0.03655508,
-  "version": 1
+  "publishDigest": "JCPc77pZi4r9bNGSxaKjwtbWqsVtQf8R2TH79cAkdJ5S",
+  "explorer": "https://suiscan.xyz/testnet/object/0x3bc7e7c8ba77eac05db50057c7a09b33a498263e106280a450adae193fee0450",
+  "version": 1,
+  "previousDeployment": {
+    "note": "Replaced 2026-05-10 with v1.1 (S01 security + hot-potato + renames + BLAKE2b TS hash). Old package retained for reference.",
+    "packageId": "0xca33144f3cac917b81d41d6720c942d51c0691a5dea8dbd5940d93ba8cc03c74"
+  }
 }
