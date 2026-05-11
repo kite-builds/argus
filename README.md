@@ -33,6 +33,7 @@ what it claimed and got exactly what it cites.
 |---|---|
 | Package | [`0x8bfa…edb24`](https://suiscan.xyz/testnet/object/0x8bfa4c14b1fd4427c0ed6c27c3fba4cb8727c02010103bda32eb48568b7edb24) |
 | `QuiktConfig` (shared) | [`0xf011…838f6b`](https://suiscan.xyz/testnet/object/0xf011aec40f8992c7ed917504eb8c9f2922f6b28597ccd30ef0165b417c838f6b) |
+| Walrus Site (testnet) | [`0x288f…325ade`](https://suiscan.xyz/testnet/object/0x288fb721aed8149e1ae4cd585e8467c6d0d4cbf7a99b41adfbff3d3a4e325ade) — base36 `10e6tx114jiwmjegsi4cq8tnlqopwfp0s0i7vm9d1vq9jdjl5q` |
 | Move modules | `quikt::quikt`, `quikt::research_session`, `quikt::session_display` |
 | Test status | 30 / 30 green (3 property invariants) |
 
