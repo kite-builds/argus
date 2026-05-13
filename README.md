@@ -6,12 +6,25 @@
 [![Sui Overflow 2026](https://img.shields.io/badge/Sui%20Overflow%202026-Agentic%20Web-1F62FF)](https://sui.io/overflow)
 [![testnet](https://img.shields.io/badge/testnet-live-2EB67D)](https://suiscan.xyz/testnet/object/0x8bfa4c14b1fd4427c0ed6c27c3fba4cb8727c02010103bda32eb48568b7edb24)
 
+## Why this matters now
+
+Stablecoin legislation (GENIUS Act + bank-of-stablecoin proposals) turns
+`USDC` and `USDT` into structural buyers of US Treasury bills. That makes
+USDC's growth politically-protected: the rollover arithmetic of US federal
+debt *requires* on-chain dollar rails to scale during the AI capex build.
+The bottleneck isn't whether agents will pay each other in USDC — that's
+the policy. The bottleneck is whether the agent-payment layer is honest
+enough to compose *multi-source* workflows without leaking the buyer's
+budget to a single broken counterparty.
+
 ## The problem
 
-When an AI agent fans out to 3 paid data sources via `x402` / `a402`, the
-sources are settled **independently** over HTTP. If source #3 over-bills or
-times out, sources #1 and #2 have already cashed your USDC. The agent's
-budget is half-spent on a half-answer. No atomicity, no rollback.
+Today's `x402` / `a402` stack settles each paid HTTP call independently.
+Fan out to three sources, source #3 over-bills, sources #1 and #2 have
+already cashed your USDC. The agent's budget is half-spent on a
+half-answer. No atomicity, no rollback. That's a non-starter for the
+kind of high-fan-out agent workloads the substrate transition needs to
+fund.
 
 ## What Quikt does
 
