@@ -20,7 +20,7 @@ import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { fromB64 } from "@mysten/sui/utils";
 import { SuiPaymentClient } from "../src/sui/sui-payment-client.ts";
-import { LocalWalrusTrace } from "../src/sui/walrus-trace.ts";
+import { LocalWalrusTrace, RemoteWalrusTrace } from "../src/sui/walrus-trace.ts";
 
 const NETWORK = (process.env.ARGUS_DEMO_NETWORK ?? "testnet") as "testnet" | "mainnet";
 const QUESTION = process.env.ARGUS_DEMO_QUESTION ?? "What is BTC's 24h volume across DEXes?";
@@ -128,7 +128,15 @@ async function main(): Promise<void> {
     coinType: COIN_TYPE,
     networks: [`sui:${NETWORK}`],
   });
-  const walrus = new LocalWalrusTrace();
+  // ARGUS_REAL_WALRUS=1 → use the public Walrus testnet publisher.
+  // Defaults to LocalWalrusTrace for offline iteration. The on-chain
+  // hash recorded by `pay_and_record` is the same in both cases —
+  // the difference is whether the blob id is a real Walrus pointer
+  // (resolvable at aggregator.walrus-testnet.walrus.space) or a
+  // local stand-in.
+  const walrus = process.env.ARGUS_REAL_WALRUS === "1"
+    ? new RemoteWalrusTrace({ epochs: 1 })
+    : new LocalWalrusTrace();
 
   // ─── Off-chain step: collect responses + Walrus uploads ───
   pause("step 1: off-chain — fetch + Walrus upload per source");
