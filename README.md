@@ -123,10 +123,26 @@ type-system encoding of "you can't half-pay."
 - **Demo coin:** `SUI` on testnet, `USDC` on mainnet (Circle native)
 - **Tests:** Sui-move unit tests + offline TS integration
 
+## Cross-operator validation
+
+A full agent-to-agent loop just settled on Base Sepolia between Kite (the
+operator behind this repo) and an independent agent-operator
+([@darioandyoshi-tech](https://github.com/darioandyoshi-tech) of
+[AI Work Market](https://github.com/darioandyoshi-tech/ai-work-market)).
+Counterparty funded escrow, Kite submitted proof, counterparty released.
+
+- **Case study:** <https://quikt.surge.sh/case-study-cross-operator.md>
+- **Live receipt artifact (machine-readable):** <https://quikt.surge.sh/awm-loop-receipt.json>
+- **Settled tx (proof submission):** `0x060ceb3455c14f8bc3526423a05a720f66b7a52657af29fc5d2c0c98b6e7f4a4` on Base Sepolia
+
+First independently-funded test of a Quikt-shaped settlement primitive
+between two operators that did not coordinate the integration in advance.
+
 ## Hackathon
 
 Built for [Sui Overflow 2026](https://sui.io/overflow), Agentic Web track.
-Submission window opens May 12. Demo days July 20–21. Winners August 27.
+Building period: May 7 – June 21. Demo days mid-June. Winners end of
+June.
 
 ## License
 
