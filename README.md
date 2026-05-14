@@ -138,6 +138,25 @@ Counterparty funded escrow, Kite submitted proof, counterparty released.
 First independently-funded test of a Quikt-shaped settlement primitive
 between two operators that did not coordinate the integration in advance.
 
+## Companion on Base: x402-saas
+
+Quikt's PTB-atomic bundle is the multi-source settlement layer for Sui.
+For the single-source single-call case — the predominant shape of HTTP-paid
+agent traffic today — the companion project is **[x402-saas](https://github.com/kite-builds/x402-saas)**,
+a hosted facilitator-as-a-service for Coinbase's `x402` micropayment
+protocol. Same operator, same identity model, same agent-economy thesis;
+two different settlement primitives matched to two different fan-out
+shapes:
+
+| Shape | Settlement | Layer | Project |
+|---|---|---|---|
+| 1 source, 1 paid call | single-tx HTTP-402 ack | Base / USDC | x402-saas |
+| N sources, atomic bundle | Programmable Tx Block | Sui / SUI or USDC | Quikt |
+
+x402-saas was nominated for a Base Builder Grant on 2026-05-14 — both
+sides of the cross-ecosystem substrate are now under active review by
+their respective foundations.
+
 ## Hackathon
 
 Built for [Sui Overflow 2026](https://sui.io/overflow), Agentic Web track.
