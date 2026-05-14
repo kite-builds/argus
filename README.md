@@ -150,6 +150,12 @@ x402-saas was nominated for a Base Builder Grant on 2026-05-14 — both
 sides of the cross-ecosystem substrate are now under active review by
 their respective foundations.
 
+## Reading
+
+- **Design notes:** [Atomic multi-source agent payments](https://quikt.surge.sh/atomic-multi-source-agent-payments.md) — ~2200-word essay on the half-paid fan-out failure mode that policy-layer answers (PaySentry, BudgetHook, Agent Passport System, BoundedSpendPolicy) don't address, and why bundle-scoped atomicity via Sui PTB is the load-bearing primitive for multi-agent production workflows.
+- **Cross-operator case study:** [Quikt × AWM closed loop on Base Sepolia](https://quikt.surge.sh/case-study-cross-operator.md) — the first independently-funded cross-operator settled agent-payment loop.
+- **Receipt artifact (machine-readable):** [`awm-loop-receipt.json`](https://quikt.surge.sh/awm-loop-receipt.json) — current `current_status: Released`, four txs verified on-chain.
+
 ## Hackathon
 
 Built for [Sui Overflow 2026](https://sui.io/overflow), Agentic Web track.
