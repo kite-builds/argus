@@ -68,27 +68,20 @@ Add `--malicious` to flip source #3 to over-bill 100×. The whole PTB
 reverts; sources #1 and #2 don't settle either. That's the property `x402`
 can't give you over independent HTTP calls.
 
-## Demo (5-step terminal flow)
+## Demo
 
-```
-step 1: off-chain — fetch + Walrus upload per source
-  bloomfilter.xyz       → blob bafyrei…  hash=0x9c8a…  5000 MIST
-  blockrun.ai           → blob bafyrei…  hash=0xa1cd…  10000 MIST
-  snack.money           → blob bafyrei…  hash=0xb284…  20000 MIST
+![Quikt atomic-bundle demo](https://quikt.surge.sh/demo.gif)
 
-step 2: on-chain — mint ResearchSession (one PTB)
-  session: 0xfb12…
-  digest:  3xPQ…
-  → https://suiscan.xyz/testnet/tx/3xPQ…
+The walkthrough shows both the happy path and the malicious-source path:
+the second run flips source #3 to over-bill 100×; the whole PTB reverts;
+sources #1 and #2 don't settle either. That's the property `x402` cannot
+give you over independent HTTP calls.
 
-step 3: on-chain — atomic multi-source bundle (ONE PTB)
-  digest:  Hs7K…
-  events:  3 ReceiptRecorded (one per source) from ONE tx
-  → https://suiscan.xyz/testnet/tx/Hs7K…
+Render this locally yourself:
 
-step 4: on-chain — lock session (owner finalisation)
-  digest:  9d1L…
-  → https://suiscan.xyz/testnet/tx/9d1L…
+```bash
+bash scripts/demo-walkthrough.sh    # scripted narration, ~30s
+node --experimental-strip-types --no-warnings scripts/demo-bundle.ts   # live testnet
 ```
 
 ## Compared to
